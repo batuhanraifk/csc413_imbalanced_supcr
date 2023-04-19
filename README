@@ -1,0 +1,34 @@
+Download imdb-wiki dataset from: https://data.vision.ee.ethz.ch/cvl/rrothe/imdb-wiki/ (specifically, download IMDB "Faces Only" 7GB).
+
+You don't need to download meta data, as imdb.csv committed here has the metadata in easier to use csv format
+
+If you do download metadata, mat_to_csv_imdb.py can be used to translate it to a csv
+
+Next the following steps were followed:
+
+1. data_cleaning.py combs through all images in imdb.csv, removing any with more than 1 person, any with age < 0 or >100, and
+    adds a column for tracking the age of a person in csv format -> output is cleaned_imdb.csv (already committed here)
+
+2. get_data_split.py assumes cleaned_imdb.csv already exists. This creates imdb_train.csv, imdb_test.csv, imdb_val.csv, and imdb_test_uniform.csv .
+    The train, test and val csvs follow a bimodal distribution, whereas test_uniform is uniformly distributed. As the csvs get created, various plots show what the distribution looks like. The exact train,test,val,and test_uniform we made use of during our experiments is committed here.
+
+3. Before running train.py, set the ROOT_FOLDER_OG variable in dataset_prep.py to wherever you downloaded the imdb_crop . dataset_prep.py creates the dataloaders used during training.
+
+4. loss.py has our implementation of supCR loss, we make use of the supcr_v2_pt.
+
+5. model.py has our model - resnet18 with last layer cut off and replaced with regressor. Model also outputs feature vectors (input to regressor) to be used for supcr loss.
+
+8. Finally, train.py was used during training. The arguments are explained here:
+    -o is the output folder. Once training is complete, a bunch of plots will be created there, and an info.txt file. The model itself will also be stored there, and the model's final predictions on the test set.
+    -l signifies loss function (either l1 or supCR)
+    -e is the number of epochs to train. Generally used ~100
+    -ner is the number of epochs to train the regressor. Only used if -l is set to SupCR due to 2 stage training (first, feature extractor is trained with supCR for -e # of epochs, then frozen and only regressor is trained for -ner # epochs). Set value >= -e usually, much faster.
+    -bs is batch size, for supCR larger batch sizes work better
+    -lr is base learning rate
+    -s is seed (though not everything makes use of the seed)
+    -t is temperature param used by SupCR. SupCR performance is pretty dependent on this - We found ~10 works best.
+    -optim is type of optimizer. adam works best from our experiments, though authors use SGDR
+    -nw is the # of workers used by the data loader. Tune to speed up training (especially for training L1). Should probably always be less than # CPUs
+    -img_size can be left always as 'og'
+    -sb makes use of the best model based on val loss between the two stages of supCR training. 
+
